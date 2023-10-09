@@ -2,6 +2,8 @@ const {app, BrowserWindow} = require('electron');
 const path = require('node:path');
 const isMac = process.platform === 'darwin'
 
+const { initialize, enable } = require('@electron/remote/main');
+initialize();
 
 
 
@@ -18,7 +20,7 @@ function createMainWindow() {
     }
   });
 
-
+  enable(mainWindow.webContents);
   mainWindow.loadFile(path.join(__dirname, './renderer/index.html'));
 }
 

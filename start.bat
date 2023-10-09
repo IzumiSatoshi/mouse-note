@@ -1,2 +1,2 @@
-cd "E:\Projects\mouse_note\start.bat"
+cd "E:\Projects\mouse_note"
 npm start

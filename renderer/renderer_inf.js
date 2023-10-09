@@ -1,4 +1,7 @@
 const { spawn } = require('child_process');
+const fs = require('fs')
+const { dialog } = require('@electron/remote');
+
 
 const PEN_WIDTH = 3.5;
 const ERASER_WIDTH = 100;
@@ -19,6 +22,7 @@ canvas.height = window.innerHeight;
 
 let painting = false;
 let currentMousePosition = { x: 0, y: 0 };
+let currentFilePath = null;
 
 // start position is center
 let offsetX = (offscreenCanvas.width - canvas.width) / 2
@@ -37,28 +41,31 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.code === 'KeyE' || event.code === 'KeyR') {
+
+    if (event.shiftKey && event.ctrlKey && event.key === 's') {
+      saveDrawingAs();
+    }else if (event.ctrlKey && event.key === 's') {
+      saveDrawing();
+    } else if (event.ctrlKey && event.key === 'a') {
+        openDrawing();
+    }else if (event.code === 'KeyF' || event.code === 'KeyD') {
         painting = true;
         currentTool = 'pen';
-    } else if (event.code === 'KeyW') {
+    } else if (event.code === 'KeyS') {
         painting = true;
         currentTool = 'eraser';
-    } else if (event.ctrlKey && event.key === 's') {
-        saveDrawing();
-    } else if (event.ctrlKey && event.key === 'o') {
-        openDrawing();
     }
   }
 );
 
 document.addEventListener('keyup', (event) => {
-    if (event.code === 'KeyE' || event.code === 'KeyR'){
+    if (event.code === 'KeyF' || event.code === 'KeyD'){
       drawDot();
       painting = false;
       ctx.beginPath();
       offscreenCtx.beginPath();
     }
-    if (event.code === 'KeyW') {
+    if (event.code === 'KeyS') {
       painting = false;
       ctx.beginPath();
       offscreenCtx.beginPath();
@@ -145,36 +152,59 @@ function redrawCanvas() {
 }
 
 function saveDrawing() {
-    const dataURL = offscreenCanvas.toDataURL("image/png");
-    const downloadLink = document.createElement("a");
-    downloadLink.href = dataURL;
-    downloadLink.download = "drawing.png";
-    downloadLink.click();
+  if (currentFilePath) {
+    saveDrawingOverwrite();
+  }else{
+    saveDrawingAs();
+  }
 }
+function saveDrawingOverwrite() {
+  const dataURL = offscreenCanvas.toDataURL("image/png");
+  const buffer = Buffer.from(dataURL.split(",")[1], 'base64');
+  fs.writeFileSync(currentFilePath, buffer);
+}
+function saveDrawingAs() {
+  console.log("save as")
+  const dataURL = offscreenCanvas.toDataURL("image/png");
+  const buffer = Buffer.from(dataURL.split(",")[1], 'base64');
+
+  dialog.showSaveDialog({
+      filters: [{
+          name: 'PNG',
+          extensions: ['png']
+      }]
+  }).then(result => {
+      if (!result.canceled && result.filePath) {
+          currentFilePath = result.filePath;
+          fs.writeFileSync(currentFilePath, buffer);
+      }
+  });
+}
+
+
+
 function openDrawing() {
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-    fileInput.onchange = function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-                    offscreenCtx.drawImage(img, 0, 0);
+    dialog.showOpenDialog({
+        filters: [{
+            name: 'Images',
+            extensions: ['png', 'jpg', 'jpeg', 'gif']
+        }],
+        properties: ['openFile']
+    }).then(result => {
+        if (!result.canceled && result.filePaths.length > 0) {
+            currentFilePath = result.filePaths[0];
+            const img = new Image();
+            img.onload = function() {
+                offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+                offscreenCtx.drawImage(img, 0, 0);
 
-                    // reset offset
-                    offsetX = (offscreenCanvas.width - canvas.width) / 2
-                    offsetY = (offscreenCanvas.height - canvas.height) / 2
+                // reset offset
+                offsetX = (offscreenCanvas.width - canvas.width) / 2;
+                offsetY = (offscreenCanvas.height - canvas.height) / 2;
 
-                    redrawCanvas();
-                };
-                img.src = e.target.result;
+                redrawCanvas();
             };
-            reader.readAsDataURL(file);
+            img.src = currentFilePath;
         }
-    };
-    fileInput.click();
+    });
 }
