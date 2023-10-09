@@ -52,11 +52,16 @@ document.addEventListener('keydown', (event) => {
 );
 
 document.addEventListener('keyup', (event) => {
-    if (event.code === 'KeyE' || event.code === 'KeyR' || event.code === 'KeyW') {
-        drawDot();
-        painting = false;
-        ctx.beginPath();
-        offscreenCtx.beginPath();
+    if (event.code === 'KeyE' || event.code === 'KeyR'){
+      drawDot();
+      painting = false;
+      ctx.beginPath();
+      offscreenCtx.beginPath();
+    }
+    if (event.code === 'KeyW') {
+      painting = false;
+      ctx.beginPath();
+      offscreenCtx.beginPath();
     }
 });
 
@@ -159,6 +164,11 @@ function openDrawing() {
                 img.onload = function() {
                     offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
                     offscreenCtx.drawImage(img, 0, 0);
+
+                    // reset offset
+                    offsetX = (offscreenCanvas.width - canvas.width) / 2
+                    offsetY = (offscreenCanvas.height - canvas.height) / 2
+
                     redrawCanvas();
                 };
                 img.src = e.target.result;
